@@ -17,7 +17,7 @@ export class Address {
 
   static create(props: {
     type: AddressType;
-    line1: string;
+    street: string;
     city: string;
     state: string;
     postalCode: string;
@@ -26,7 +26,7 @@ export class Address {
   }): Address {
     return new Address(
       props.type,
-      props.line1,
+      props.street,
       props.city,
       props.state,
       props.postalCode,

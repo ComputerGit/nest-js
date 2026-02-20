@@ -1,19 +1,18 @@
 import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
 import { UserService } from 'src/modules/user/application/services/user.service';
-import type { EmployeeRepository } from 'src/modules/employee/domain/repositories/employee.repository';
+import type { IEmployeeRepository } from 'src/modules/employee/domain/repositories/employee.repository.interface';
+import { EMPLOYEE_REPOSITORY } from 'src/modules/employee/domain/repositories/employee.repository.interface';
+import { EmployeeId } from 'src/modules/employee/domain/value-objects/employee-id.vo';
 
-// The AuthService handles authentication logic
-// It verifies credentials and returns authenticated user information
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
-    @Inject('EmployeeRepository')
-    private readonly employeeRepository: EmployeeRepository,
+
+    @Inject(EMPLOYEE_REPOSITORY)
+    private readonly employeeRepository: IEmployeeRepository,
   ) {}
 
-  // Validate user credentials during login
-  // Returns the authenticated user data that will be stored in the session
   async validateUser(
     username: string,
     password: string,
@@ -29,7 +28,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid username or password');
     }
 
-    // Step 2: Check if the user's account is active and can log in
+    // Step 2: Check if the user's account is active
     if (!user.canLogin()) {
       throw new UnauthorizedException(
         'Your account is not active. Please contact support.',
@@ -46,12 +45,15 @@ export class AuthService {
     // Step 4: Update the last login timestamp
     await this.userService.updateLastLogin(user);
 
-    // Step 5: Fetch the employee data to get their role
-    // We need to bridge from the user domain to the employee domain here
-    const employees = await this.employeeRepository.retrieveAll();
-    const employee = employees.find(
-      (emp) => emp.id.getValue() === user.employeeId,
-    );
+    // ==========================================
+    // THE FIX: Step 5 (Clean Architecture Way)
+    // ==========================================
+
+    // 5a. Convert the string into our strict Domain Value Object
+    const empIdVo = EmployeeId.create(user.employeeId);
+
+    // 5b. Ask the database for ONLY this specific employee
+    const employee = await this.employeeRepository.findById(empIdVo);
 
     if (!employee) {
       throw new UnauthorizedException('Employee data not found');
@@ -59,9 +61,11 @@ export class AuthService {
 
     // Return the data that will be stored in the session
     return {
-      userId: user.id.getValue(),
+      userId: user.id.getValue(), // Assuming your User ID VO uses getValue()
       employeeId: user.employeeId,
-      role: employee.role.getValue(),
+
+      // We use getProps() because we made the domain properties strictly encapsulated!
+      role: employee.getProps().role.getValue(),
     };
   }
 }

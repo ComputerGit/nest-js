@@ -1,16 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { EmployeeRepository } from '../../domain/repositories/employee.repository';
-import type { Employee } from '../../domain/entities/employee.entity';
+import { Employee } from '../../domain/entities/employee.entity';
+import type { IEmployeeRepository } from 'src/modules/employee/domain/repositories/employee.repository.interface';
+import { EMPLOYEE_REPOSITORY } from 'src/modules/employee/domain/repositories/employee.repository.interface';
 
 @Injectable()
 export class RetrieveEmployeesService {
   constructor(
-    @Inject('EmployeeRepository')
-    private readonly employeeRepository: EmployeeRepository,
+    @Inject(EMPLOYEE_REPOSITORY)
+    private readonly employeeRepository: IEmployeeRepository,
   ) {}
 
   async retrieveAll(): Promise<Employee[]> {
     console.log('Starting retrieveAll... AT SERVICE');
-    return await this.employeeRepository.retrieveAll();
+    // Note: If you haven't yet, you will need to add findAll() to your IEmployeeRepository
+    // interface and implement it in your EmployeeMongoRepository!
+    return await this.employeeRepository.findAll();
   }
 }

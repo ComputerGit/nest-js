@@ -1,55 +1,58 @@
-// create-employee.dto.ts
 import {
   IsString,
-  IsNotEmpty,
-  IsOptional,
+  IsEmail,
   IsArray,
   ValidateNested,
   IsEnum,
+  IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { EmployeeRoleType } from '../../domain/value-objects/employee-role.vo';
+import { AddressType } from '../../domain/value-objects/address.vo';
 
-export class AddressDto {
+class AddressDto {
+  @IsEnum(AddressType)
+  type: AddressType;
+
   @IsString()
   @IsNotEmpty()
-  type: string;
+  street: string;
 
   @IsString()
   @IsNotEmpty()
-  line1: string;
-
-  @IsOptional()
-  @IsString()
-  line2?: string;
-
-  @IsString()
   city: string;
 
   @IsString()
+  @IsNotEmpty()
   state: string;
 
   @IsString()
+  @IsNotEmpty()
   postalCode: string;
 
   @IsString()
+  @IsNotEmpty()
   country: string;
 }
 
 export class CreateEmployeeDto {
   @IsString()
   @IsNotEmpty()
-  firstName: string;
+  empId: string;
 
-  @IsOptional()
   @IsString()
-  middleName?: string;
+  @IsNotEmpty()
+  firstName: string;
 
   @IsString()
   @IsNotEmpty()
   lastName: string;
 
-  @IsEnum(['IT', 'HR', 'PMO', 'MANAGER', 'ADMIN', 'EMPLOYEE'])
-  role: string;
+  @IsEmail()
+  email: string;
+
+  @IsEnum(EmployeeRoleType)
+  role: EmployeeRoleType;
 
   @IsArray()
   @ValidateNested({ each: true })

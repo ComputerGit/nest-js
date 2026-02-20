@@ -13,6 +13,9 @@ export class Name {
     if (!firstName || !lastName) {
       throw new Error('First and Last name are required');
     }
+    if(firstName === lastName) {
+      throw new Error ('First Name and Last Name are Same ')
+    }
     return new Name(firstName, lastName, middleName);
   }
 }

@@ -1,24 +1,23 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { UserController } from './controllers/user.controller';
-import { UserService } from './application/services/user.service';
+import { MongooseModule } from '@nestjs/mongoose'; // 1. Add this
 import {
   UserDocument,
   UserSchema,
-} from './infrastructure/persistence/mongo/user.schema';
-import { UserMongoRepository } from './infrastructure/persistence/mongo/user.mongo.repository';
+} from './infrastructure/persistence/mongo/user.schema'; // 2. Add this (adjust path if needed)
+import { UserController } from './controllers/user.controller';
+import { UserService } from './application/services/user.service';
 import { EmployeeModule } from '../employee/employee.module';
+import { UserMongoRepository } from './infrastructure/persistence/mongo/user.mongo.repository';
 import { DeleteUserService } from './application/services/delete-user.service';
 
 @Module({
   imports: [
-    // Register the User schema with Mongoose
+    EmployeeModule,
+
+    // 3. ADD THIS BLOCK: It registers the User schema so the repository can use it
     MongooseModule.forFeature([
       { name: UserDocument.name, schema: UserSchema },
     ]),
-    // Import EmployeeModule so we can access the EmployeeRepository
-    // This is necessary because UserService needs to verify employees exist
-    EmployeeModule,
   ],
   controllers: [UserController],
   providers: [
@@ -29,6 +28,6 @@ import { DeleteUserService } from './application/services/delete-user.service';
       useClass: UserMongoRepository,
     },
   ],
-  exports: [UserService], // Export UserService so AuthModule can use it
+  exports: [UserService],
 })
 export class UserModule {}

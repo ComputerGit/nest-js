@@ -2,111 +2,72 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { EmployeeRepository } from '../../../domain/repositories/employee.repository';
-import { Employee } from '../../../domain/entities/employee.entity';
-
+import { IEmployeeRepository } from '../../../domain/repositories/employee.repository.interface';
+import { Employee as EmployeeEntity } from '../../../domain/entities/employee.entity';
 import { EmployeeId } from '../../../domain/value-objects/employee-id.vo';
-import { Name } from '../../../domain/value-objects/name.vo';
-import { EmployeeRole } from '../../../domain/value-objects/employee-role.vo';
-import { Address, AddressType } from '../../../domain/value-objects/address.vo';
-import { EmployeeStatus } from '../../../domain/value-objects/employee-status.enum';
-
-import { EmployeeDocument } from './employee.schema';
+import { EmployeeMapper } from '../../mappers/employee.mapper';
+import {
+  EmployeeDocument,
+  Employee as EmployeeSchemaClass,
+} from './employee.schema';
 
 @Injectable()
-export class EmployeeMongoRepository implements EmployeeRepository {
+export class EmployeeMongoRepository implements IEmployeeRepository {
   constructor(
-    @InjectModel(EmployeeDocument.name)
+    @InjectModel(EmployeeSchemaClass.name)
     private readonly employeeModel: Model<EmployeeDocument>,
   ) {}
-
-  async retrieveAll(): Promise<Employee[]> {
-    // Fetch all employee documents from MongoDB
-    console.log('Starting retrieveAll... at emp-mongo-repo');
-    const employeeDocs = await this.employeeModel.find().exec();
-    console.log('Found documents:', employeeDocs.length);
-
-    // Transform each persistence model into a domain entity
-    try {
-      return employeeDocs.map((doc, index) => {
-        console.log(`Processing doc ${index}:`, doc.employeeCode);
-
-        return Employee.fromPersistence({
-          id: EmployeeId.create(doc.employeeCode),
-          name: Name.create(doc.firstName, doc.lastName, doc.middleName),
-          role: EmployeeRole.create(doc.role),
-          addresses: doc.addresses.map((addr) =>
-            Address.create({
-              type: addr.type as AddressType,
-              line1: addr.line1,
-              line2: addr.line2,
-              city: addr.city,
-              state: addr.state,
-              postalCode: addr.postalCode,
-              country: addr.country,
-            }),
-          ),
-          status: doc.status as EmployeeStatus,
-        });
-      });
-    } catch (error) {
-      console.error('Error in retrieveAll:', error);
-      throw error;
-    }
+  findAll(): Promise<EmployeeEntity[]> {
+    throw new Error('Method not implemented.');
   }
-  async save(employee: Employee): Promise<Employee> {
-    /* ================================
-       DOMAIN → PERSISTENCE
-       ================================ */
 
-    const created = new this.employeeModel({
-      employeeCode: employee.id.getValue(),
+  /**
+   * Saves a pure Domain Entity to MongoDB.
+   * Handles both Creating (Insert) and Updating (Upsert).
+   */
+  async save(employee: EmployeeEntity): Promise<void> {
+    // 1. Convert the pure Domain Entity into a flat JSON object for Mongoose
+    const persistenceModel = EmployeeMapper.toPersistence(employee);
 
-      firstName: employee.name.firstName,
-      lastName: employee.name.lastName,
-      middleName: employee.name.middleName,
+    // 2. Save to DB. Using `findOneAndUpdate` with `upsert: true` means:
+    // "If an employee with this emp_id exists, update them. If not, create a new row."
+    await this.employeeModel
+      .findOneAndUpdate(
+        { 'identity.emp_id': employee.id.value },
+        { $set: persistenceModel },
+        { upsert: true, new: true },
+      )
+      .exec();
+  }
 
-      role: employee.role.getValue(),
+  /**
+   * Fetches an Employee by their EmployeeId Value Object
+   */
+  async findById(id: EmployeeId): Promise<EmployeeEntity | null> {
+    const doc = await this.employeeModel
+      .findOne({ 'identity.emp_id': id.value })
+      .exec();
 
-      addresses: employee.addresses.map((addr) => ({
-        type: addr.type,
-        line1: addr.line1,
-        line2: addr.line2,
-        city: addr.city,
-        state: addr.state,
-        postalCode: addr.postalCode,
-        country: addr.country,
-      })),
+    if (!doc) {
+      return null; // Employee not found
+    }
 
-      status: employee.status,
-    });
+    // Convert the Mongoose document back into a pure Domain Entity
+    return EmployeeMapper.toDomain(doc);
+  }
 
-    const saved = await created.save();
+  /**
+   * Fetches an Employee by their Email string
+   */
+  async findByEmail(email: string): Promise<EmployeeEntity | null> {
+    const doc = await this.employeeModel
+      .findOne({ 'identity.email': email })
+      .exec();
 
-    /* ================================
-       PERSISTENCE → DOMAIN
-       ================================ */
+    if (!doc) {
+      return null;
+    }
 
-    return Employee.fromPersistence({
-      id: EmployeeId.create(saved.employeeCode),
-
-      name: Name.create(saved.firstName, saved.lastName, saved.middleName),
-
-      role: EmployeeRole.create(saved.role),
-
-      addresses: saved.addresses.map((addr) =>
-        Address.create({
-          type: addr.type as AddressType,
-          line1: addr.line1,
-          line2: addr.line2,
-          city: addr.city,
-          state: addr.state,
-          postalCode: addr.postalCode,
-          country: addr.country,
-        }),
-      ),
-
-      status: saved.status as EmployeeStatus,
-    });
+    return EmployeeMapper.toDomain(doc);
   }
 }

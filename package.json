@@ -1,0 +1,17 @@
+{
+  "name": "nest-js-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "dev": "npm run infra:up && concurrently -n \"DB,BACKEND,FRONTEND\" -c \"magenta,blue,green\" \"docker compose logs -f\" \"npm run start:dev --prefix backend\" \"npm run dev --prefix frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

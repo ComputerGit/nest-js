@@ -32,7 +32,8 @@ export class UserController {
     req.session.user = {
       userId: user.id.getValue(),
       employeeId: user.employeeId,
-      role: employee ? employee.role.getValue() : 'EMPLOYEE',
+      // FIX: Use getProps() to safely access the encapsulated role
+      role: employee ? employee.getProps().role.getValue() : 'EMPLOYEE',
     };
 
     console.log('🔍 Session after setting user:', req.session);

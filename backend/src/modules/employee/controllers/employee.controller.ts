@@ -1,26 +1,24 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { CreateEmployeeService } from '../application/services/create-employee.service';
 import { CreateEmployeeDto } from '../application/dto/create-employee.dto';
-import { Public, Roles } from 'src/common/decorators/roles.decorator';
-import { RetrieveEmployeesService } from '../application/services/retrieve-employee.service';
-@Controller('employee')
+
+// 1. Import your custom Public decorator
+import { Public } from 'src/common/decorators/roles.decorator';
+
+@Controller('employees')
 export class EmployeeController {
-  constructor(
-    private readonly createEmployeeService: CreateEmployeeService,
-    private readonly retrieveEmployeeService: RetrieveEmployeesService,
-  ) {}
+  constructor(private readonly createEmployeeService: CreateEmployeeService) {}
 
-  // @Roles('ADMIN')
-  @Public()
+  @Public() // 2. Add this right here! It tells the Guard to let this request through.
   @Post()
-  create(@Body() dto: CreateEmployeeDto) {
-    const countryCode = 'IN'; // TEMP (later from auth context)
-    return this.createEmployeeService.execute(dto, countryCode);
-  }
+  @HttpCode(HttpStatus.CREATED)
+  async createEmployee(
+    @Body() createEmployeeDto: CreateEmployeeDto,
+  ): Promise<{ message: string }> {
+    await this.createEmployeeService.execute(createEmployeeDto);
 
-  @Public()
-  @Get()
-  retrieveAll() {
-    return this.retrieveEmployeeService.retrieveAll();
+    return {
+      message: 'Employee created successfully',
+    };
   }
 }

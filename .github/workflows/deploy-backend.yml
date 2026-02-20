@@ -1,0 +1,45 @@
+name: Deploy Backend to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    permissions:
+      contents: read
+      id-token: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+      # ✅ Step 1: Checkout code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ✅ Step 2: Authenticate using Workload Identity Federation
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      # ✅ Step 3: Setup gcloud CLI
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      # ✅ Step 4: Set GCP Project
+      - name: Set GCP Project
+        run: gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
+      # ✅ Step 5: Deploy Backend to Cloud Run
+      - name: Deploy employee-api to Cloud Run
+        run: |
+          gcloud run deploy employee-api \
+            --source ./backend \
+            --region asia-south1 \
+            --allow-unauthenticated \
+            --set-env-vars MONGO_URI="${{ secrets.MONGO_URI }}" \
+            --set-env-vars REDIS_URL="${{ secrets.REDIS_URL }}" \
+            --set-env-vars SESSION_SECRET="${{ secrets.SESSION_SECRET }}"

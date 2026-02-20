@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import type { UserRepository } from '../../domain/repositories/user.repository';
 import { User } from '../../domain/entities/user.entity';
-import type { EmployeeRepository } from 'src/modules/employee/domain/repositories/employee.repository';
+
+// 1. Correct Imports
+import type { IEmployeeRepository } from 'src/modules/employee/domain/repositories/employee.repository.interface';
+import { EMPLOYEE_REPOSITORY } from 'src/modules/employee/domain/repositories/employee.repository.interface';
+import { EmployeeId } from 'src/modules/employee/domain/value-objects/employee-id.vo'; // Needed for lookup
 
 @Injectable()
 export class UserService {
@@ -14,8 +18,9 @@ export class UserService {
     @Inject('UserRepository')
     private readonly userRepository: UserRepository,
 
-    @Inject('EmployeeRepository')
-    private readonly employeeRepository: EmployeeRepository,
+    // 2. Correct Injection Token and Interface
+    @Inject(EMPLOYEE_REPOSITORY)
+    private readonly employeeRepository: IEmployeeRepository,
   ) {}
 
   // Activate a new user account using only employee ID and password
@@ -23,15 +28,13 @@ export class UserService {
     employeeId: string;
     password: string;
   }): Promise<User> {
-    // Step 1: Verify the employee exists in the employee collection
-    const employees = await this.employeeRepository.retrieveAll();
-    console.log('got EMPLOYEEs IN THE DB : ');
-    const employeeExists = employees.some(
-      (emp) => emp.id.getValue() === props.employeeId,
-    );
-    console.log('employee exists : ', employeeExists);
+    // 3. FIX: Convert string to Value Object and look up strictly by ID
+    const empIdVo = EmployeeId.create(props.employeeId);
+    const employee = await this.employeeRepository.findById(empIdVo);
 
-    if (!employeeExists) {
+    console.log('employee exists : ', !!employee);
+
+    if (!employee) {
       throw new BadRequestException(
         'Employee ID not found. Please contact HR to register as an employee first.',
       );
@@ -68,7 +71,8 @@ export class UserService {
   }
 
   async getEmployeeForUser(employeeId: string) {
-    const employees = await this.employeeRepository.retrieveAll();
-    return employees.find((emp) => emp.id.getValue() === employeeId);
+    // 4. FIX: Stop retrieving all employees! Just look up the one you need.
+    const empIdVo = EmployeeId.create(employeeId);
+    return await this.employeeRepository.findById(empIdVo);
   }
 }

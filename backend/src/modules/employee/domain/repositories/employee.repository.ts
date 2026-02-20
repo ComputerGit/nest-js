@@ -1,6 +1,6 @@
-import { Employee } from '../entities/employee.entity';
+// import { Employee } from '../entities/employee.entity';
 
-export interface EmployeeRepository {
-  save(employee: Employee): Promise<Employee>;
-  retrieveAll(): Promise<Employee[]>;
-}
+// export interface EmployeeRepository {
+//   save(employee: Employee): Promise<Employee>;
+//   retrieveAll(): Promise<Employee[]>;
+// }

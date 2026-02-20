@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { HealthModule } from './health/health.module';
 import { TerminusModule } from '@nestjs/terminus';
@@ -9,15 +9,26 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, Reflector } from '@nestjs/core';
 import { RolesGuard } from './common/guards/roles.guard';
 import { CacheModule } from './infrastructure/cache/cache.module';
-import { UserModule } from './modules/user/user.module';
+// import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
-    // 🌍 Global config (ENV access everywhere)
+    // 🌍 Global config
     ConfigModule.forRoot({ isGlobal: true }),
-    // 🧠 MongoDB connection (ROOT ONLY)
-    MongooseModule.forRoot(process.env.MONGO_URI!),
+
+    // 🧠 MongoDB connection (Async & Safe for Serverless)
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI'),
+        // Serverless best practices to prevent connection hanging
+        maxPoolSize: 10,
+        maxIdleTimeMS: 60000,
+        serverSelectionTimeoutMS: 5000,
+      }),
+      inject: [ConfigService],
+    }),
 
     // 🚦 Rate limiting
     ThrottlerModule.forRoot({
@@ -33,7 +44,7 @@ import { AuthModule } from './modules/auth/auth.module';
     CacheModule,
     HealthModule,
     EmployeeModule,
-    UserModule,
+    // UserModule,
     AuthModule,
   ],
   providers: [
@@ -43,7 +54,6 @@ import { AuthModule } from './modules/auth/auth.module';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
-
     {
       provide: APP_GUARD,
       useClass: RolesGuard,

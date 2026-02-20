@@ -1,41 +1,44 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+
+// 1. Infrastructure Imports (Database & Repositories)
 import {
-  EmployeeSequenceDocument,
-  EmployeeSequenceSchema,
-} from './infrastructure/persistence/mongo/employee-sequence.schema';
-import { EmployeeController } from './controllers/employee.controller';
-import { CreateEmployeeService } from './application/services/create-employee.service';
-import { EmployeeMongoRepository } from './infrastructure/persistence/mongo/employee.mongo.repository';
-import {
-  EmployeeDocument,
+  Employee,
   EmployeeSchema,
 } from './infrastructure/persistence/mongo/employee.schema';
-import { EmployeeIdGenerator } from './infrastructure/identity/employee-id.generator';
-import { EmployeeSequenceRepository } from './infrastructure/persistence/mongo/employee-sequence.repository';
-import { RetrieveEmployeesService } from './application/services/retrieve-employee.service';
+import { EmployeeMongoRepository } from './infrastructure/persistence/mongo/employee.mongo.repository';
+
+// 2. Domain Imports (Tokens/Interfaces)
+import { EMPLOYEE_REPOSITORY } from './domain/repositories/employee.repository.interface';
+
+// 3. Application Imports (Services)
+import { CreateEmployeeService } from './application/services/create-employee.service';
+
+// 4. Presentation Imports (Controllers)
+import { EmployeeController } from './controllers/employee.controller';
 
 @Module({
   imports: [
+    // Register the Mongoose Schema with NestJS
     MongooseModule.forFeature([
-      { name: EmployeeDocument.name, schema: EmployeeSchema },
-      { name: EmployeeSequenceDocument.name, schema: EmployeeSequenceSchema },
+      { name: Employee.name, schema: EmployeeSchema },
     ]),
   ],
   controllers: [EmployeeController],
   providers: [
+    // The Application Service
     CreateEmployeeService,
-    RetrieveEmployeesService,
-    EmployeeSequenceRepository,
-    EmployeeIdGenerator,
+
+    // The Magic Binding: Whenever something asks for EMPLOYEE_REPOSITORY,
+    // NestJS will inject an instance of EmployeeMongoRepository.
     {
-      provide: 'EmployeeRepository',
+      provide: EMPLOYEE_REPOSITORY,
       useClass: EmployeeMongoRepository,
     },
   ],
   exports: [
-    // Export the EmployeeRepository so other modules can use it
-    'EmployeeRepository',
+    // Export the token if other modules (like Auth or Payroll) need to read Employee data
+    EMPLOYEE_REPOSITORY,
   ],
 })
 export class EmployeeModule {}
